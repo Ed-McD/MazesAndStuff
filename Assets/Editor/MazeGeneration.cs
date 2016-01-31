@@ -40,6 +40,9 @@ public struct intVector2
 public class MazeGeneration {
 
     GameObject wallWorldHolder;
+    GameObject floorWorldHolder; 
+    GameObject fullMaze;
+
 
     stats _stats;
     List<mazeCell> maze = new List<mazeCell>();
@@ -112,7 +115,7 @@ public class MazeGeneration {
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x - 1, _cell.gridPos.y), dir = direction.LEFT });
         }
-        if (_cell.gridPos.x < _stats.mazeWidth - 1)
+        if (_cell.gridPos.x < _stats.mazeWidth )
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x + 1, _cell.gridPos.y), dir = direction.RIGHT });
         }
@@ -120,7 +123,7 @@ public class MazeGeneration {
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x, _cell.gridPos.y - 1), dir = direction.DOWN });
         }
-        if (_cell.gridPos.y < _stats.mazeDepth - 1)
+        if (_cell.gridPos.y < _stats.mazeDepth)
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x, _cell.gridPos.y + 1), dir = direction.UP });
         }
@@ -129,21 +132,25 @@ public class MazeGeneration {
     mazeCell getCellAt(int _x, int _y)
     {
 
-        int whatis = ((_y - 1) * _stats.mazeWidth) + _x - 1;
-        return (maze[((_y - 1) * _stats.mazeWidth) + _x - 1]);
+        int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1;
+        return (maze[((_y - 1) * _stats.mazeDepth) + _x - 1]);
     }
 
     public void clearWallsFromWorld()
     {
-        GameObject.DestroyImmediate(wallWorldHolder.gameObject);
+        GameObject.DestroyImmediate(fullMaze.gameObject);
     }
 
     public void drawMaze()
     {
         wallDataHolder.Clear();
         wallWorldHolder = new GameObject();
+              
+        fullMaze = new GameObject();
+
         wallData tempWallData;
         GameObject wallObject;
+       
 
         foreach (mazeCell c in maze)
         {
@@ -184,6 +191,7 @@ public class MazeGeneration {
         foreach (wallData wd in wallDataHolder)
         {
             wallObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wallObject.GetComponent<Renderer>().material = _stats.wallMat;
             wallObject.name = ("Wall " + wd.position.x + ", " + wd.position.y);
             wallObject.transform.position = new Vector3(wd.position.x, _stats.wallHeight /2, wd.position.y);
 
@@ -199,6 +207,20 @@ public class MazeGeneration {
 
             wallWorldHolder.name = "Walls";
         }
+
+        floorWorldHolder = GameObject.CreatePrimitive(PrimitiveType.Quad);        
+        floorWorldHolder.GetComponent<Renderer>().material = _stats.floorMat;
+        floorWorldHolder.transform.position = new Vector3((_stats.mazeDepth/ 2.0f) +0.5f, 0, (_stats.mazeWidth / 2.0f)+0.5f);
+        floorWorldHolder.transform.localScale = new Vector3(_stats.mazeDepth, _stats.mazeWidth, 1);
+        floorWorldHolder.transform.Rotate(new Vector3 (90,0,0));
+        floorWorldHolder.name = "Floor";
+
+        wallWorldHolder.transform.parent = fullMaze.transform;
+        floorWorldHolder.transform.parent = fullMaze.transform;
+        fullMaze.name = "Maze";
+        fullMaze.transform.localScale *= 10;
+
+
 
 
     }
@@ -287,6 +309,58 @@ public class MazeGeneration {
 
                 }
 
+                // RESHUFFLE WITH BIAS
+                #region 
+
+                List<cellLabel> horizontals = new List<cellLabel>();
+                List<cellLabel> verticals = new List<cellLabel>();
+
+                if (_stats.useBias)
+                {
+                    foreach (cellLabel cL in currCell.adjacentCells)
+                    {
+                        if (cL.dir == direction.LEFT || cL.dir == direction.RIGHT)
+                        {
+                            horizontals.Add(cL);
+                        }
+                        if (cL.dir == direction.UP || cL.dir == direction.DOWN)
+                        {
+
+                        }
+                    }
+                    int hzShuffCount = 0;
+                    int vtShuffCount = 0;
+                    for (int i = 0; i < currCell.adjacentCells.Count; i++)
+                    {
+                        cellLabel tempCell = currCell.adjacentCells[i];
+                        int index;
+                        if (horizontals.Contains(tempCell))
+                        {
+                            if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                            {
+                                index = hzShuffCount;
+                                currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                                currCell.adjacentCells[index] = tempCell;
+                            }
+
+                            hzShuffCount++;
+                        }
+                        else
+                        {
+                            if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                            {
+                                index = vtShuffCount;
+                                currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                                currCell.adjacentCells[index] = tempCell;
+                            }
+
+                            vtShuffCount++;
+                        }
+
+                    }
+                }
+                #endregion
+
                 cellLabel labeledInCell = currCell.adjacentCells[0];
 
                 //Cycle through shuffled list for first neighbour already in maze
@@ -340,12 +414,16 @@ public class MazeGeneration {
             outCells.Add(c);
         }
 
+
+        //Pick a starting cell...
         currCell = outCells[Random.Range(0, outCells.Count)];
 
+        //...add it to the maze...
         currCell.inMaze = true;
         inCells.Add(currCell);
         outCells.Remove(currCell);
 
+        //...and make its neighbours frontier cells
         foreach (cellLabel c in currCell.adjacentCells)
         {
             if (!frontierCells.Contains(c.cell))
@@ -371,6 +449,58 @@ public class MazeGeneration {
                 currCell.adjacentCells[randomIndex] = tempCell;
 
             }
+
+            // RESHUFFLE WITH BIAS
+            #region 
+
+            List<cellLabel> horizontals = new List<cellLabel>();
+            List<cellLabel> verticals = new List<cellLabel>();
+
+            if (_stats.useBias)
+            {
+                foreach (cellLabel cL in currCell.adjacentCells)
+                {
+                    if (cL.dir == direction.LEFT || cL.dir == direction.RIGHT)
+                    {
+                        horizontals.Add(cL);
+                    }
+                    if (cL.dir == direction.UP || cL.dir == direction.DOWN)
+                    {
+
+                    }
+                }
+                int hzShuffCount = 0;
+                int vtShuffCount = 0;
+                for (int i = 0; i < currCell.adjacentCells.Count; i++)
+                {
+                    cellLabel tempCell = currCell.adjacentCells[i];
+                    int index;
+                    if (horizontals.Contains(tempCell))
+                    {
+                        if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                        {
+                            index = hzShuffCount;
+                            currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                            currCell.adjacentCells[index] = tempCell;
+                        }
+
+                        hzShuffCount++;
+                    }
+                    else
+                    {
+                        if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                        {
+                            index = vtShuffCount;
+                            currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                            currCell.adjacentCells[index] = tempCell;
+                        }
+
+                        vtShuffCount++;
+                    }
+
+                }
+            }
+            #endregion
 
             //Cycle through shuffled list for first neighbour already in maze
             for (int i = 0; i < currCell.adjacentCells.Count; i++)
@@ -431,18 +561,73 @@ public class MazeGeneration {
 
         while (path.Count > 0)
         {
-
             //Shuffle the adjacent cell list
             for (int i = 0; i < currCell.adjacentCells.Count; i++)
             {
                 cellLabel tempCell = currCell.adjacentCells[i];
-                int randomIndex = Random.Range(i, currCell.adjacentCells.Count);
+                int randomIndex;                
+                randomIndex = Random.Range(i, currCell.adjacentCells.Count);
                 currCell.adjacentCells[i] = currCell.adjacentCells[randomIndex];
                 currCell.adjacentCells[randomIndex] = tempCell;
 
             }
 
-            labeledInCell = currCell.adjacentCells[0];
+
+            // RESHUFFLE WITH BIAS
+            #region 
+
+            List<cellLabel> horizontals = new List<cellLabel>();
+            List<cellLabel> verticals = new List<cellLabel>();
+
+            if (_stats.useBias)
+            {
+                foreach (cellLabel cL in currCell.adjacentCells)
+                {
+                    if (cL.dir == direction.LEFT || cL.dir == direction.RIGHT)
+                    {
+                        horizontals.Add(cL);
+                    }
+                    if(cL.dir ==direction.UP || cL.dir == direction.DOWN)
+                    {
+
+                    }
+                }
+                int hzShuffCount = 0;
+                int vtShuffCount = 0;
+                for (int i = 0; i < currCell.adjacentCells.Count; i++)
+                {
+                    cellLabel tempCell = currCell.adjacentCells[i];
+                    int index;
+                    if (horizontals.Contains(tempCell))
+                    {
+                        if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                        {
+                            index = hzShuffCount;
+                            currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                            currCell.adjacentCells[index] = tempCell;
+                        }                        
+                        
+                        hzShuffCount++;
+                    }
+                    else
+                    {
+                        if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                        {
+                            index = vtShuffCount;
+                            currCell.adjacentCells[i] = currCell.adjacentCells[index];
+                            currCell.adjacentCells[index] = tempCell;
+                        }
+
+                        vtShuffCount++;
+                    }
+                    
+                }
+            }
+            #endregion
+
+
+            //This line is just to stop VS having a fit about something being possible unassigned.
+            labeledInCell = currCell.adjacentCells[0];    
 
             //Cycle through shuffled list for first neighbour already in maze
             for (int i = 0; i < currCell.adjacentCells.Count; i++)

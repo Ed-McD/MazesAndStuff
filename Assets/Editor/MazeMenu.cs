@@ -2,14 +2,17 @@
 using System.Collections;
 using UnityEditor;
 
-
+public enum mazeType
+{
+    BACKTRACKER,PRIMS,KRUSKALS,RANDOM,
+}
 
 public struct stats
 {
     
     public int mazeWidth, mazeDepth;
     public float wallThickness, wallHeight;
-    bool Prim;
+    public mazeType generationMethod;
 }
 
 public class MazeMenu : EditorWindow
@@ -37,13 +40,36 @@ public class MazeMenu : EditorWindow
         scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
         {
             
-            param.mazeWidth= EditorGUILayout.IntSlider("Maze Width", param.mazeWidth, 0, 50);
+            param.mazeWidth= EditorGUILayout.IntSlider("Maze Width", param.mazeWidth, 5, 50);
 
-            param.mazeDepth= EditorGUILayout.IntSlider("Maze Depth", param.mazeDepth, 0, 50);
+            param.mazeDepth= EditorGUILayout.IntSlider("Maze Depth", param.mazeDepth, 5, 50);
+
+            param.wallHeight = EditorGUILayout.Slider("Wall Height", param.wallHeight, 0.5f, 3);
+
+            param.wallThickness = EditorGUILayout.Slider("Wall Thickness", param.wallThickness, 0.01f, 0.25f);
+
+            param.generationMethod = (mazeType)EditorGUILayout.EnumPopup("Generation Method", param.generationMethod);
+            
             if ( GUILayout.Button("Generate"))
             {
                 generator.Generate(param);
             }
+            if (GUILayout.Button("ClearWall"))
+            {
+                generator.clearWallsFromWorld();
+            }
+            //if (GUILayout.Button("MAZE IT UP!!"))
+            //{
+            //    generator.generatePrims();
+            //}
+            //if(GUILayout.Button("SHOW THAT MAZE!!"))
+            //{
+            //    generator.drawMaze();
+            //}
+            //if (GUILayout.Button("testWalls"))
+            //{
+            //    generator.everyOther();
+            //}
         }
         EditorGUILayout.EndScrollView();        
     }

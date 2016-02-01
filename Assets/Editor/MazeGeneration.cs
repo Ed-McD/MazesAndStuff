@@ -2,16 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 
+
+//Enum defining directions for ease.
 public enum direction
 {
     LEFT, RIGHT, UP, DOWN,
 }
+
+//position of wall and direction to rotate it.
 public struct wallData
 {
     public bool isHorizontal;
     public Vector2 position;
 }
 
+//The base cell. Needs a list of cell labels, which contain cells, so this must be a class.
 public class mazeCell
 {
     public int index;
@@ -24,12 +29,14 @@ public class mazeCell
 
 }
 
+//Used to label a neighbouring cell with a direction
 public struct cellLabel
 {
     public mazeCell cell;
     public direction dir;
 }
 
+//struct used for holding grid positions
 public struct intVector2
 {
     public int x;
@@ -48,12 +55,15 @@ public class MazeGeneration {
     List<mazeCell> maze = new List<mazeCell>();
     List<wallData> wallDataHolder = new List<wallData>();
 
+
+    //Main function
     public void Generate(stats _params)
     {
         Debug.Log("Generating...");
         _stats = _params;
         createCells();
 
+        //Chooses algorithm function
         switch (_stats.generationMethod)
         {
             case mazeType.PRIMS:
@@ -90,8 +100,11 @@ public class MazeGeneration {
 
     }
 
+    //Initialise a maze of cells
     void createCells()
     {
+
+        //Clear out the last maze
         maze.Clear();
         int cellCount = 0;
         for (int i = 1; i <= _stats.mazeWidth; i++)
@@ -109,6 +122,7 @@ public class MazeGeneration {
         }  
     }
 
+    //Define the cells neighbours
     void getNeighbours(mazeCell _cell)
     {
         if (_cell.gridPos.x > 1)
@@ -129,18 +143,21 @@ public class MazeGeneration {
         }
     }
 
+    //Return cell in maz list from grid position co-ords
     mazeCell getCellAt(int _x, int _y)
     {
 
-        int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1;
-        return (maze[((_y - 1) * _stats.mazeDepth) + _x - 1]);
+        int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1; //For debugging.
+        return (maze[((_y - 1) * _stats.mazeDepth) + _x - 1]); //Convert given grid position to list position.
     }
 
+    //Remove the last maze created from the scene
     public void clearWallsFromWorld()
     {
         GameObject.DestroyImmediate(fullMaze.gameObject);
     }
 
+    //Create objects to make a visual representation of the maze.
     public void drawMaze()
     {
         wallDataHolder.Clear();
@@ -223,8 +240,9 @@ public class MazeGeneration {
 
 
 
-    }
-   
+    }   
+
+    //Function that removes the walls between the cell passed in, and the neighbour in the direction passed in.
     public void neighbourRemove(mazeCell _cell ,direction _dir)
     {
         foreach(cellLabel cL in _cell.adjacentCells)
@@ -259,6 +277,7 @@ public class MazeGeneration {
         }
     }
 
+    //Debug function for testing maze maze drawing worked correctly.
     public void everyOther()
     {
         foreach (mazeCell c in maze)
@@ -277,6 +296,7 @@ public class MazeGeneration {
         }
     }
 
+    //Kruskals algorithm 
     void generateKruskals()
     {
         List<int> IDLIST = new List<int>(); 
@@ -400,6 +420,7 @@ public class MazeGeneration {
         }        
     }
 
+    //Prims Algorithm
     void generatePrims()
     {
 
@@ -537,6 +558,7 @@ public class MazeGeneration {
 
     }
 
+    //Recursive Backtracker Algorithm
     void generateBackTracker()
     {
         //Shuffle the maze

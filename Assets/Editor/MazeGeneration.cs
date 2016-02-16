@@ -50,7 +50,7 @@ public class MazeGeneration {
     GameObject floorWorldHolder; 
     GameObject fullMaze;
 
-
+    float biasToUse;
     stats _stats;
     List<mazeCell> maze = new List<mazeCell>();
     List<wallData> wallDataHolder = new List<wallData>();
@@ -129,7 +129,7 @@ public class MazeGeneration {
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x - 1, _cell.gridPos.y), dir = direction.LEFT });
         }
-        if (_cell.gridPos.x < _stats.mazeWidth )
+        if (_cell.gridPos.x < _stats.mazeDepth )
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x + 1, _cell.gridPos.y), dir = direction.RIGHT });
         }
@@ -137,7 +137,7 @@ public class MazeGeneration {
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x, _cell.gridPos.y - 1), dir = direction.DOWN });
         }
-        if (_cell.gridPos.y < _stats.mazeDepth)
+        if (_cell.gridPos.y < _stats.mazeWidth)
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x, _cell.gridPos.y + 1), dir = direction.UP });
         }
@@ -277,7 +277,7 @@ public class MazeGeneration {
         }
     }
 
-    //Debug function for testing maze maze drawing worked correctly.
+    //Debug function for testing maze drawing worked correctly.
     public void everyOther()
     {
         foreach (mazeCell c in maze)
@@ -294,6 +294,32 @@ public class MazeGeneration {
                // c.wallDown = false;
             }
         }
+    }
+
+    float calculateDynamicBias(mazeCell _cell)
+    {
+        float _bias = 0;
+
+        
+        //Calculate a bias value
+        if (!_cell.wallLeft)
+        {
+            biasToUse += 0.25f;
+        }
+        if (!_cell.wallRight)
+        {
+            biasToUse += 0.25f;
+        }
+        if (!_cell.wallUp)
+        {
+            biasToUse -= 0.25f;
+        }
+        if (!_cell.wallDown)
+        {
+            biasToUse -= 0.25f;
+        }
+
+        return _bias;
     }
 
     //Kruskals algorithm 
@@ -350,6 +376,13 @@ public class MazeGeneration {
                     }
                     int hzShuffCount = 0;
                     int vtShuffCount = 0;
+                    biasToUse = _stats.bias;
+
+                    if (_stats.dynamicBias)
+                    {
+                        biasToUse = calculateDynamicBias(currCell);
+                    }
+
                     for (int i = 0; i < currCell.adjacentCells.Count; i++)
                     {
                         cellLabel tempCell = currCell.adjacentCells[i];
@@ -492,6 +525,15 @@ public class MazeGeneration {
                 }
                 int hzShuffCount = 0;
                 int vtShuffCount = 0;
+                biasToUse = _stats.bias;
+
+                if (_stats.dynamicBias)
+                {
+
+                    biasToUse = calculateDynamicBias(currCell);
+                }
+
+
                 for (int i = 0; i < currCell.adjacentCells.Count; i++)
                 {
                     cellLabel tempCell = currCell.adjacentCells[i];
@@ -616,13 +658,21 @@ public class MazeGeneration {
                 }
                 int hzShuffCount = 0;
                 int vtShuffCount = 0;
+                biasToUse = _stats.bias;
+                 
+                if(_stats.dynamicBias)
+                {
+                    biasToUse = calculateDynamicBias(currCell);
+                }
+
                 for (int i = 0; i < currCell.adjacentCells.Count; i++)
                 {
+                    
                     cellLabel tempCell = currCell.adjacentCells[i];
                     int index;
                     if (horizontals.Contains(tempCell))
                     {
-                        if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                        if (Random.Range(-1.0f, 1.0f) < biasToUse)
                         {
                             index = hzShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -633,7 +683,7 @@ public class MazeGeneration {
                     }
                     else
                     {
-                        if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                        if (Random.Range(-1.0f, 1.0f) > biasToUse)
                         {
                             index = vtShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];

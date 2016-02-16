@@ -16,6 +16,7 @@ public struct stats
     public mazeType generationMethod;
     public Material wallMat,floorMat;
     public bool useBias;
+    public bool dynamicBias;
     public float bias; 
 }
 
@@ -28,7 +29,7 @@ public class MazeMenu : EditorWindow
     public MazeGeneration generator = new MazeGeneration();
     private Vector2 scrollPos;
     GUIContent tooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards ertical");
-
+    GUIStyle headerStyle = new GUIStyle();
     
 
     
@@ -49,13 +50,15 @@ public class MazeMenu : EditorWindow
    
     void OnGUI()
     {
+        headerStyle.fontStyle = FontStyle.Bold;
         
         scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
         {
-            
-            param.mazeWidth= EditorGUILayout.IntSlider("Maze Width", param.mazeWidth, 5, 50);
+            EditorGUILayout.LabelField("A category", headerStyle);
 
-            param.mazeDepth= EditorGUILayout.IntSlider("Maze Depth", param.mazeDepth, 5, 50);
+            param.mazeWidth= EditorGUILayout.IntSlider("Maze Depth", param.mazeWidth, 5, 50);
+
+            param.mazeDepth= EditorGUILayout.IntSlider("Maze Width", param.mazeDepth, 5, 50);
 
             param.wallHeight = EditorGUILayout.Slider("Wall Height", param.wallHeight, 0.5f, 3);
 
@@ -67,11 +70,15 @@ public class MazeMenu : EditorWindow
 
             param.floorMat = (Material)EditorGUILayout.ObjectField("Floor Material", param.floorMat, typeof(Material));
 
+            EditorGUILayout.LabelField("Bias Settings", headerStyle);
+
             param.useBias = EditorGUILayout.Toggle("Use Bias", param.useBias);            
             
             if (param.useBias)
             {
+                param.dynamicBias = EditorGUILayout.Toggle("Dynamic Bias", param.dynamicBias);
                 param.bias = EditorGUILayout.Slider(tooltip, param.bias, -1.0f, 1.0f);
+
             }         
 
             if ( GUILayout.Button("Generate"))

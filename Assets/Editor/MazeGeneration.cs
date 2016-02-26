@@ -56,6 +56,14 @@ public class MazeGeneration {
     List<wallData> wallDataHolder = new List<wallData>();
 
 
+    //Construct Basic Layout
+    public void constructBase(stats _params)
+    {
+        _stats = _params;        
+        createCells();
+        drawMaze();
+    }
+
     //Main function
     public void Generate(stats _params)
     {
@@ -154,7 +162,11 @@ public class MazeGeneration {
     //Remove the last maze created from the scene
     public void clearWallsFromWorld()
     {
-        GameObject.DestroyImmediate(fullMaze.gameObject);
+        if (fullMaze != null)
+        {
+            GameObject.DestroyImmediate(fullMaze.gameObject);
+        }
+        
     }
 
     //Create objects to make a visual representation of the maze.
@@ -296,6 +308,7 @@ public class MazeGeneration {
         }
     }
 
+    //NEEDS MORE WORK!!
     float calculateDynamicBias(mazeCell _cell)
     {
         float _bias = 0;

@@ -30,6 +30,8 @@ public class MazeMenu : EditorWindow
     private Vector2 scrollPos;
     GUIContent tooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards ertical");
     GUIStyle headerStyle = new GUIStyle();
+
+    AnimBool showBiasFields;
     
 
     
@@ -47,14 +49,16 @@ public class MazeMenu : EditorWindow
         return true;
     }
 
-   
+
     void OnGUI()
     {
+        showBiasFields.target = param.useBias;
+        showBiasFields.valueChanged.AddListener(Repaint);
         headerStyle.fontStyle = FontStyle.Bold;
         
         scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
         {
-            EditorGUILayout.LabelField("A category", headerStyle);
+            EditorGUILayout.LabelField("Basic Layout Parameters", headerStyle);
 
             param.mazeWidth= EditorGUILayout.IntSlider("Maze Depth", param.mazeWidth, 5, 50);
 
@@ -64,31 +68,44 @@ public class MazeMenu : EditorWindow
 
             param.wallThickness = EditorGUILayout.Slider("Wall Thickness", param.wallThickness, 0.01f, 0.25f);
 
-            param.generationMethod = (mazeType)EditorGUILayout.EnumPopup("Generation Method", param.generationMethod);
-
             param.wallMat = (Material)EditorGUILayout.ObjectField("Wall Material", param.wallMat, typeof(Material));
 
             param.floorMat = (Material)EditorGUILayout.ObjectField("Floor Material", param.floorMat, typeof(Material));
 
-            EditorGUILayout.LabelField("Bias Settings", headerStyle);
+            Rect r = EditorGUILayout.BeginHorizontal();
+            {
+                if (GUILayout.Button("Construct Base Layout"))
+                {
+                    generator.constructBase(param);
+                }
+                if (GUILayout.Button("Clear Last Maze"))
+                {
+                    generator.clearWallsFromWorld();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
 
-            param.useBias = EditorGUILayout.Toggle("Use Bias", param.useBias);            
-            
-            if (param.useBias)
+            EditorGUILayout.Space();
+                        
+            EditorGUILayout.LabelField("Maze Specific Parmaters", headerStyle);
+
+            param.generationMethod = (mazeType)EditorGUILayout.EnumPopup("Generation Method", param.generationMethod);
+                       
+            param.useBias = EditorGUILayout.Toggle("Use Bias", param.useBias);  
+
+            if (EditorGUILayout.BeginFadeGroup(showBiasFields.faded))
             {
                 param.dynamicBias = EditorGUILayout.Toggle("Dynamic Bias", param.dynamicBias);
                 param.bias = EditorGUILayout.Slider(tooltip, param.bias, -1.0f, 1.0f);
-
-            }         
+            }
+            EditorGUILayout.EndFadeGroup();             
 
             if ( GUILayout.Button("Generate"))
             {
                 generator.Generate(param);
             }
-            if (GUILayout.Button("Clear Last Maze"))
-            {
-                generator.clearWallsFromWorld();
-            }
+
+            
            
         }
         EditorGUILayout.EndScrollView();        

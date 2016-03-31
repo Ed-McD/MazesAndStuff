@@ -17,24 +17,24 @@ public struct stats
     public Material wallMat,floorMat;
     public bool useBias;
     public bool dynamicBias;
-    public float bias; 
+    public float bias;
+    public int dBPathLength;
+    public AnimationCurve dBCurve;
 }
 
 public class MazeMenu : EditorWindow
 {
-    public stats param = new stats() {
+    private Vector2 scrollPos;
+    public stats param = new stats() {useBias = false,
         wallMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat"),
         floorMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat")
     };
-    public MazeGeneration generator = new MazeGeneration();
-    private Vector2 scrollPos;
-    GUIContent tooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards ertical");
+    public MazeGeneration generator = new MazeGeneration();    
+    GUIContent biasTooltip;
+    GUIContent wallRemovalTT;
+    GUIContent doorwayTT;
     GUIStyle headerStyle = new GUIStyle();
-
-    AnimBool showBiasFields;
-    
-
-    
+    AnimBool showBiasFields = new AnimBool();
     
 
     [MenuItem("Custom Tools/Maze Generator")]
@@ -49,6 +49,25 @@ public class MazeMenu : EditorWindow
         return true;
     }
 
+    void OnEnable()
+    {
+        biasTooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards vertical");
+        wallRemovalTT = new GUIContent("Remove Selected Walls", 
+            "Remove walls of a base layout that are selected in the scene window. \nCells either side of the wall can't be connected to the rest of the maze");
+        doorwayTT = new GUIContent("Designate Doorway",
+            "Remove walls of a base layout that are selected in the scene window. \nCells either side of the wall are able to be connected to the maze");
+
+        headerStyle = new GUIStyle();
+        showBiasFields = new AnimBool();
+        generator = new MazeGeneration();        
+        param = new stats()
+        {
+            dBCurve = new AnimationCurve(),
+            useBias = false,
+            wallMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat"),
+            floorMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat")
+        };
+    }
 
     void OnGUI()
     {
@@ -68,11 +87,13 @@ public class MazeMenu : EditorWindow
 
             param.wallThickness = EditorGUILayout.Slider("Wall Thickness", param.wallThickness, 0.01f, 0.25f);
 
+#pragma warning disable 0618
             param.wallMat = (Material)EditorGUILayout.ObjectField("Wall Material", param.wallMat, typeof(Material));
 
             param.floorMat = (Material)EditorGUILayout.ObjectField("Floor Material", param.floorMat, typeof(Material));
+#pragma warning restore 0618
 
-            Rect r = EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.BeginHorizontal();
             {
                 if (GUILayout.Button("Construct Base Layout"))
                 {
@@ -85,6 +106,15 @@ public class MazeMenu : EditorWindow
             }
             EditorGUILayout.EndHorizontal();
 
+            if (GUILayout.Button(wallRemovalTT))
+            {
+                generator.removeSelectedWalls();
+            }
+            if (GUILayout.Button(doorwayTT))
+            {
+                generator.createDoorway();
+            }
+
             EditorGUILayout.Space();
                         
             EditorGUILayout.LabelField("Maze Specific Parmaters", headerStyle);
@@ -95,12 +125,19 @@ public class MazeMenu : EditorWindow
 
             if (EditorGUILayout.BeginFadeGroup(showBiasFields.faded))
             {
+                param.bias = EditorGUILayout.Slider(biasTooltip, param.bias, -1.0f, 1.0f);
                 param.dynamicBias = EditorGUILayout.Toggle("Dynamic Bias", param.dynamicBias);
-                param.bias = EditorGUILayout.Slider(tooltip, param.bias, -1.0f, 1.0f);
+                param.dBPathLength = EditorGUILayout.IntSlider("Dynamic Path Length", param.dBPathLength, 1, 5);
+                param.dBCurve = EditorGUILayout.CurveField("Dyanmic Bias Curve", param.dBCurve);
             }
-            EditorGUILayout.EndFadeGroup();             
+            EditorGUILayout.EndFadeGroup();
 
-            if ( GUILayout.Button("Generate"))
+            if (GUILayout.Button("Generate With Rooms"))
+            {
+                generator.GenerateWithRooms(param);
+            }
+
+            if ( GUILayout.Button("Generate New"))
             {
                 generator.Generate(param);
             }

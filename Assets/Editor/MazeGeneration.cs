@@ -14,6 +14,7 @@ public struct wallData
 {
     public bool isHorizontal;
     public Vector2 position;
+    
 }
 
 //The base cell. Needs a list of cell labels, which contain cells, so this must be a class.
@@ -26,6 +27,8 @@ public class mazeCell
     public intVector2 gridPos;
     public List<cellLabel> adjacentCells = new List<cellLabel>();
     public List<cellLabel> inNeighbours = new List<cellLabel>();
+    public GameObject goWallUp, goWallDown, goWallLeft, goWallRight;
+    public bool canConnect;
 
 }
 
@@ -62,6 +65,47 @@ public class MazeGeneration {
         _stats = _params;        
         createCells();
         drawMaze();
+    }
+
+    public void GenerateWithRooms(stats _params)
+    {
+        int tempD = _stats.mazeDepth, tempW = _stats.mazeWidth;
+        _stats = _params;
+        _stats.mazeDepth = tempD; _stats.mazeWidth = tempW;
+        switch (_stats.generationMethod)
+        {
+            case mazeType.PRIMS:
+                {
+                    generatePrims();
+                    break;
+                }
+            case mazeType.KRUSKALS:
+                {
+                    generateKruskals();
+                    break;
+                }
+            case mazeType.RANDOM:
+                {
+                    if (Random.Range(0, 3) % 2 == 0)
+                    {
+                        generatePrims();
+                    }
+                    else
+                    {
+                        generateKruskals();
+                    }
+                    break;
+                }
+            case mazeType.BACKTRACKER:
+                {
+                    generateBackTracker();
+                    break;
+                }
+
+        }
+        clearWallsFromWorld();
+        drawMaze();
+
     }
 
     //Main function
@@ -120,7 +164,7 @@ public class MazeGeneration {
             for (int j = 1; j <= _stats.mazeDepth; j++)
             {
                 maze.Add(new mazeCell() { index = i, ID = cellCount, gridPos = { x = j, y = i }, inMaze = false,
-                    wallUp = true, wallDown = true, wallLeft = true, wallRight = true });
+                    wallUp = true, wallDown = true, wallLeft = true, wallRight = true, canConnect = true});
                 cellCount++;
             }
         }
@@ -155,7 +199,8 @@ public class MazeGeneration {
     mazeCell getCellAt(int _x, int _y)
     {
 
-        int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1; //For debugging.
+        //int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1; //For debugging.
+        //Debug.Log(whatis);
         return (maze[((_y - 1) * _stats.mazeDepth) + _x - 1]); //Convert given grid position to list position.
     }
 
@@ -169,6 +214,71 @@ public class MazeGeneration {
         
     }
 
+    private void createWall(wallData wd, mazeCell _cell, direction _cellDir)
+    {
+        if (!wallDataHolder.Contains(wd))
+        {
+            GameObject wallObject;
+            wallDataHolder.Add(wd);
+
+            wallObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wallObject.GetComponent<Renderer>().material = _stats.wallMat;
+            wallObject.name = ("Wall " + wd.position.x + ", " + wd.position.y);
+            wallObject.transform.position = new Vector3(wd.position.x, _stats.wallHeight / 2, wd.position.y);
+
+            if (wd.isHorizontal)
+            {
+                wallObject.transform.localScale = new Vector3(_stats.wallThickness, _stats.wallHeight, 1 + _stats.wallThickness);
+            }
+            else
+            {
+                wallObject.transform.localScale = new Vector3(1 + _stats.wallThickness, _stats.wallHeight, _stats.wallThickness);
+            }
+            wallObject.transform.parent = wallWorldHolder.transform;       
+            wallWorldHolder.name = "Walls";
+            
+            switch(_cellDir)
+            {
+                case direction.LEFT:
+                    _cell.goWallRight = wallObject;
+                    if (returnCellInDir(_cell, direction.RIGHT)!= _cell)
+                    {
+                        returnCellInDir(_cell, direction.RIGHT).goWallLeft = wallObject;
+                    }
+
+                    break;
+                case direction.RIGHT:
+                    _cell.goWallLeft = wallObject;
+                    
+                    if (returnCellInDir(_cell, direction.LEFT) != _cell)
+                    {
+                        returnCellInDir(_cell, direction.LEFT).goWallRight = wallObject;
+                    }
+
+                    break;
+                case direction.UP:
+                    _cell.goWallDown = wallObject;
+                    
+                    if (returnCellInDir(_cell, direction.DOWN) != _cell)
+                    {
+                        returnCellInDir(_cell, direction.DOWN).goWallUp = wallObject;
+                    }
+
+                    break;
+                case direction.DOWN:
+                    _cell.goWallUp = wallObject;
+                    
+                    if (returnCellInDir(_cell, direction.UP) != _cell)
+                    {
+                        returnCellInDir(_cell, direction.UP).goWallDown = wallObject;
+                    }
+
+                    break;
+
+            }            
+        }        
+    }
+
     //Create objects to make a visual representation of the maze.
     public void drawMaze()
     {
@@ -176,66 +286,37 @@ public class MazeGeneration {
         wallWorldHolder = new GameObject();
               
         fullMaze = new GameObject();
-
-        wallData tempWallData;
-        GameObject wallObject;
-       
+        wallData wd;    
 
         foreach (mazeCell c in maze)
         {
-            if (c.wallLeft)
+            
+            if (c.wallLeft && !c.goWallLeft)
             {
-                tempWallData = new wallData() { position = new Vector2(c.gridPos.x - 0.5f, c.gridPos.y), isHorizontal = true };
-                if (!wallDataHolder.Contains(tempWallData))
-                {
-                    wallDataHolder.Add(tempWallData);
-                }
+                wd = new wallData() { position = new Vector2(c.gridPos.x - 0.5f, c.gridPos.y), isHorizontal = true };
+                createWall(wd, c, direction.RIGHT);       
+
             }
-            if (c.wallRight)
+            if (c.wallRight && !c.goWallRight)
             {
-                tempWallData = new wallData() { position = new Vector2(c.gridPos.x + 0.5f, c.gridPos.y), isHorizontal = true };
-                if (!wallDataHolder.Contains(tempWallData))
-                {
-                    wallDataHolder.Add(tempWallData);
-                }
+                wd = new wallData() {position = new Vector2(c.gridPos.x + 0.5f, c.gridPos.y), isHorizontal = true };
+                createWall(wd, c,direction.LEFT);
+               
             }
-            if (c.wallUp)
+            if (c.wallUp && !c.goWallUp)
             {
-                tempWallData = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y + 0.5f), isHorizontal = false };
-                if (!wallDataHolder.Contains(tempWallData))
-                {
-                    wallDataHolder.Add(tempWallData);
-                }
+                wd = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y + 0.5f), isHorizontal = false };
+                createWall(wd, c,direction.DOWN);
+                
             }
-            if (c.wallDown)
+            if (c.wallDown && !c.goWallDown)
             {
-                tempWallData = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y - 0.5f), isHorizontal = false };
-                if (!wallDataHolder.Contains(tempWallData))
-                {
-                    wallDataHolder.Add(tempWallData);
-                }
-            }
+                wd = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y - 0.5f), isHorizontal = false };
+                createWall(wd, c,direction.UP);
+                
+            }         
         }
 
-        foreach (wallData wd in wallDataHolder)
-        {
-            wallObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            wallObject.GetComponent<Renderer>().material = _stats.wallMat;
-            wallObject.name = ("Wall " + wd.position.x + ", " + wd.position.y);
-            wallObject.transform.position = new Vector3(wd.position.x, _stats.wallHeight /2, wd.position.y);
-
-            if (wd.isHorizontal)
-            {
-                wallObject.transform.localScale = new Vector3(_stats.wallThickness, _stats.wallHeight, 1+ _stats.wallThickness);
-            }
-            else
-            {
-                wallObject.transform.localScale = new Vector3(1+ _stats.wallThickness, _stats.wallHeight, _stats.wallThickness);
-            }
-            wallObject.transform.parent = wallWorldHolder.transform;
-
-            wallWorldHolder.name = "Walls";
-        }
 
         floorWorldHolder = GameObject.CreatePrimitive(PrimitiveType.Quad);        
         floorWorldHolder.GetComponent<Renderer>().material = _stats.floorMat;
@@ -249,10 +330,204 @@ public class MazeGeneration {
         fullMaze.name = "Maze";
         fullMaze.transform.localScale *= 10;
 
+    }
+
+    public void createDoorway()
+    {
+        List<GameObject> selectedWalls = new List<GameObject>();
+        foreach (GameObject go in UnityEditor.Selection.gameObjects)
+        {
+            if (go.name.Contains("Wall"))
+            {
+                selectedWalls.Add(go);
+            }
+        }
+        foreach (mazeCell cell in maze)
+        {
+            for (int i = 0; i < selectedWalls.Count; i++)
+            {
+                if (selectedWalls[i] == cell.goWallLeft)
+                {
+                    designateDoorways(cell, direction.LEFT);
+                }
+                else if (selectedWalls[i] == cell.goWallRight)
+                {
+                    designateDoorways(cell, direction.RIGHT);
+                }
+                else if (selectedWalls[i] == cell.goWallUp)
+                {
+                    designateDoorways(cell, direction.UP);
+                }
+                else if (selectedWalls[i] == cell.goWallDown)
+                {
+                    designateDoorways(cell, direction.DOWN);
+                }
+            }
+        }
+    }
+
+    private void designateDoorways(mazeCell _cell, direction _dir)
+    {
+        bool temp = true;
+        foreach (cellLabel cL in _cell.adjacentCells)
+        {
+            if (cL.dir == _dir)
+            {
+                switch (cL.dir)
+                {
+                    case direction.LEFT:
+
+                        cL.cell.wallRight = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallRight);
+                        cL.cell.canConnect = temp;
+                        _cell.wallLeft = false;
+                        GameObject.DestroyImmediate(_cell.goWallLeft);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = false;
+                        cL.cell.inMaze = false;
+
+                        break;
+                    case direction.RIGHT:
+
+                        cL.cell.wallLeft = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallLeft);
+                        cL.cell.canConnect = temp;
+                        _cell.wallRight = false;
+                        GameObject.DestroyImmediate(_cell.goWallRight);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = false;
+                        cL.cell.inMaze = false;
 
 
+                        break;
+                    case direction.UP:
 
-    }   
+                        cL.cell.wallDown = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallDown);
+                        cL.cell.canConnect = temp;
+                        _cell.wallUp = false;
+                        GameObject.DestroyImmediate(_cell.goWallUp);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = false;
+                        cL.cell.inMaze = false;
+
+                        break;
+                    case direction.DOWN:
+
+                        cL.cell.wallUp = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallUp);
+                        cL.cell.canConnect = temp;
+                        _cell.wallDown = false;
+                        GameObject.DestroyImmediate(_cell.goWallDown);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = false;
+                        cL.cell.inMaze = false;
+
+
+                        break;
+                }
+            }
+        }
+    }
+
+    // W I P
+    public void removeSelectedWalls()
+    {
+        List<GameObject> selectedWalls = new List<GameObject>();
+        foreach(GameObject go in  UnityEditor.Selection.gameObjects)
+        {
+            if(go.name.Contains("Wall"))
+            {
+                selectedWalls.Add(go);
+            }
+        }        
+        foreach( mazeCell cell in maze)
+        {
+            for (int i = 0; i < selectedWalls.Count; i ++)
+            {
+                if (selectedWalls[i] == cell.goWallLeft)
+                {
+                    neighbourRemoveObject(cell, direction.LEFT);
+                }
+                else if(selectedWalls[i] == cell.goWallRight)
+                {
+                    neighbourRemoveObject(cell, direction.RIGHT);
+                }
+                else if (selectedWalls[i] == cell.goWallUp)
+                {
+                    neighbourRemoveObject(cell, direction.UP);
+                }
+                else if (selectedWalls[i] == cell.goWallDown)
+                {
+                    neighbourRemoveObject(cell, direction.DOWN);
+                }
+            }
+        }
+    }
+
+    public void neighbourRemoveObject(mazeCell _cell, direction _dir)
+    {
+        bool temp = false;
+        foreach (cellLabel cL in _cell.adjacentCells)
+        {
+            if (cL.dir == _dir)
+            {
+                switch (cL.dir)
+                {
+                    case direction.LEFT:
+
+                        cL.cell.wallRight = false;                        
+                        GameObject.DestroyImmediate(cL.cell.goWallRight);
+                        cL.cell.canConnect = temp;
+                        _cell.wallLeft = false;
+                        GameObject.DestroyImmediate(_cell.goWallLeft);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = true;
+                        cL.cell.inMaze = true;
+
+                        break;
+                    case direction.RIGHT:
+
+                        cL.cell.wallLeft = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallLeft);
+                        cL.cell.canConnect = temp;
+                        _cell.wallRight = false;
+                        GameObject.DestroyImmediate(_cell.goWallRight);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = true;
+                        cL.cell.inMaze = true;
+                        
+
+                        break;
+                    case direction.UP:
+
+                        cL.cell.wallDown = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallDown);
+                        cL.cell.canConnect = temp;
+                        _cell.wallUp = false;
+                        GameObject.DestroyImmediate(_cell.goWallUp);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = true;
+                        cL.cell.inMaze = true;
+
+                        break;
+                    case direction.DOWN:
+
+                        cL.cell.wallUp = false;
+                        GameObject.DestroyImmediate(cL.cell.goWallUp);
+                        cL.cell.canConnect = temp;
+                        _cell.wallDown = false;
+                        GameObject.DestroyImmediate(_cell.goWallDown);
+                        _cell.canConnect = temp;
+                        _cell.inMaze = true;
+                        cL.cell.inMaze = true;
+
+
+                        break;
+                }
+            }
+        }
+    }
 
     //Function that removes the walls between the cell passed in, and the neighbour in the direction passed in.
     public void neighbourRemove(mazeCell _cell ,direction _dir)
@@ -264,7 +539,7 @@ public class MazeGeneration {
                 switch (cL.dir)
                 {
                     case direction.LEFT:
-                        
+
                         _cell.wallLeft = false;
                         cL.cell.wallRight = false;
 
@@ -277,7 +552,7 @@ public class MazeGeneration {
                     case direction.UP:
                         cL.cell.wallDown = false;
                         _cell.wallUp = false;
-
+                        
                         break;
                     case direction.DOWN:
                         cL.cell.wallUp = false;
@@ -308,31 +583,113 @@ public class MazeGeneration {
         }
     }
 
-    //NEEDS MORE WORK!!
+    //Get cell in directions
+    mazeCell returnCellInDir(mazeCell _cell, direction _dir)
+    {
+        foreach (cellLabel _cl in _cell.adjacentCells)
+        {
+            if(_cl.dir == _dir)
+            {
+                return _cl.cell;
+            }
+        }
+        return _cell;
+    }
+
+    // DYNAMIC BIAS  // NEEDS MORE WORK!!
     float calculateDynamicBias(mazeCell _cell)
     {
-        float _bias = 0;
-
         
-        //Calculate a bias value
-        if (!_cell.wallLeft)
-        {
-            biasToUse += 0.25f;
-        }
-        if (!_cell.wallRight)
-        {
-            biasToUse += 0.25f;
-        }
-        if (!_cell.wallUp)
-        {
-            biasToUse -= 0.25f;
-        }
-        if (!_cell.wallDown)
-        {
-            biasToUse -= 0.25f;
-        }
+        float _bias = 0;
+        mazeCell temp;
+        int hCount = 0;
+        int vCount = 0;
+        float hDecimal, vDecimal;
+        
 
+        #region Get Count
+        foreach (cellLabel cL in _cell.adjacentCells)
+        {
+            switch (cL.dir)
+            {
+                case direction.LEFT:
+                    if (cL.cell.wallLeft == false)
+                    {
+                        hCount++;
+                        for (int i = 1; i < _stats.dBPathLength; i++)
+                        {
+                            temp = returnCellInDir(cL.cell, direction.LEFT);
+                            if (temp != cL.cell && !temp.wallLeft)
+                            {
+                                hCount++;
+                            }
+                        }                                        
+                    }
+                   
+
+                    break;
+                case direction.RIGHT:
+                    if (cL.cell.wallRight == false)
+                    {
+                        hCount++;
+                        for (int i = 1; i < _stats.dBPathLength; i++)
+                        {
+                            temp = returnCellInDir(cL.cell, direction.RIGHT);
+                            if (temp != cL.cell && !temp.wallRight)
+                            {
+                                hCount++;
+                            }
+                        }
+                    }
+
+                    break;
+                case direction.UP:
+                    if (cL.cell.wallUp == false)
+                    {
+                        vCount++;
+                        for (int i = 1; i < _stats.dBPathLength; i++)
+                        {
+                            temp = returnCellInDir(cL.cell, direction.UP);
+                            if (temp != cL.cell && !temp.wallUp)
+                            {
+                                vCount++;
+                            }
+                        }
+                    }
+
+                    break;
+                case direction.DOWN:
+                    if (cL.cell.wallDown == false)
+                    {
+                        vCount++;
+                        for (int i = 1; i < _stats.dBPathLength; i++)
+                        {
+                            temp = returnCellInDir(cL.cell, direction.DOWN);
+                            if (temp != cL.cell && !temp.wallDown)
+                            {
+                                vCount++;
+                            }
+                        }
+                    }
+                    break;
+            }
+
+        }
+        #endregion
+
+        hDecimal = (float)hCount / (float)_stats.dBPathLength;
+        vDecimal = (float)vCount / (float)_stats.dBPathLength;
+        _bias = (hDecimal - vDecimal)/2.0f;
+        _bias = evaluateCurve(_bias);
+
+        //Debug.Log("hCount = " + hCount + ", hdecimal = " + hDecimal + "\n vdecimal = " + vDecimal);
+        Debug.Log(_bias);
         return _bias;
+    }
+
+    float evaluateCurve( float _value)
+    {
+        return (_stats.dBCurve.Evaluate(_value)); 
     }
 
     //Kruskals algorithm 
@@ -351,7 +708,10 @@ public class MazeGeneration {
 
         foreach (mazeCell c in maze)
         {
-            IDLIST.Add(c.ID);
+            if (!IDLIST.Contains(c.ID))
+            {
+                IDLIST.Add(c.ID);
+            }
         }
 
         while (IDLIST.Count > 1)
@@ -372,7 +732,7 @@ public class MazeGeneration {
                 #region 
 
                 List<cellLabel> horizontals = new List<cellLabel>();
-                List<cellLabel> verticals = new List<cellLabel>();
+                //List<cellLabel> verticals = new List<cellLabel>();
 
                 if (_stats.useBias)
                 {
@@ -402,7 +762,7 @@ public class MazeGeneration {
                         int index;
                         if (horizontals.Contains(tempCell))
                         {
-                            if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                            if (Random.Range(-1.0f, 1.0f) < biasToUse)
                             {
                                 index = hzShuffCount;
                                 currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -413,7 +773,7 @@ public class MazeGeneration {
                         }
                         else
                         {
-                            if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                            if (Random.Range(-1.0f, 1.0f) > biasToUse)
                             {
                                 index = vtShuffCount;
                                 currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -521,7 +881,7 @@ public class MazeGeneration {
             #region 
 
             List<cellLabel> horizontals = new List<cellLabel>();
-            List<cellLabel> verticals = new List<cellLabel>();
+            //List<cellLabel> verticals = new List<cellLabel>();
 
             if (_stats.useBias)
             {
@@ -542,7 +902,6 @@ public class MazeGeneration {
 
                 if (_stats.dynamicBias)
                 {
-
                     biasToUse = calculateDynamicBias(currCell);
                 }
 
@@ -553,7 +912,7 @@ public class MazeGeneration {
                     int index;
                     if (horizontals.Contains(tempCell))
                     {
-                        if (Random.Range(-1.0f, 1.0f) < _stats.bias)
+                        if (Random.Range(-1.0f, 1.0f) < biasToUse)
                         {
                             index = hzShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -564,7 +923,7 @@ public class MazeGeneration {
                     }
                     else
                     {
-                        if (Random.Range(-1.0f, 1.0f) > _stats.bias)
+                        if (Random.Range(-1.0f, 1.0f) >biasToUse)
                         {
                             index = vtShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -629,10 +988,10 @@ public class MazeGeneration {
         List<mazeCell> path = new List<mazeCell>();
 
         cellLabel labeledInCell;
-        mazeCell startingCell;
+        //mazeCell startingCell;
         mazeCell currCell;
         currCell = maze[0];
-        startingCell = maze[0];
+        //startingCell = maze[0];
 
         path.Add(currCell);
 
@@ -654,7 +1013,7 @@ public class MazeGeneration {
             #region 
 
             List<cellLabel> horizontals = new List<cellLabel>();
-            List<cellLabel> verticals = new List<cellLabel>();
+            //List<cellLabel> verticals = new List<cellLabel>();
 
             if (_stats.useBias)
             {

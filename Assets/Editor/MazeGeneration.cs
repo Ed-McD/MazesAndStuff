@@ -51,7 +51,7 @@ public class MazeGeneration {
 
     GameObject wallWorldHolder;
     GameObject floorWorldHolder; 
-    GameObject fullMaze;
+    public GameObject fullMaze;
 
     float biasToUse;
     stats _stats;
@@ -368,7 +368,7 @@ public class MazeGeneration {
 
     private void designateDoorways(mazeCell _cell, direction _dir)
     {
-        bool temp = true;
+        bool setConnection = true;
         foreach (cellLabel cL in _cell.adjacentCells)
         {
             if (cL.dir == _dir)
@@ -379,10 +379,10 @@ public class MazeGeneration {
 
                         cL.cell.wallRight = false;
                         GameObject.DestroyImmediate(cL.cell.goWallRight);
-                        cL.cell.canConnect = temp;
+                        cL.cell.canConnect = setConnection;
                         _cell.wallLeft = false;
                         GameObject.DestroyImmediate(_cell.goWallLeft);
-                        _cell.canConnect = temp;
+                        _cell.canConnect = setConnection;
                         _cell.inMaze = false;
                         cL.cell.inMaze = false;
 
@@ -391,10 +391,10 @@ public class MazeGeneration {
 
                         cL.cell.wallLeft = false;
                         GameObject.DestroyImmediate(cL.cell.goWallLeft);
-                        cL.cell.canConnect = temp;
+                        cL.cell.canConnect = setConnection;
                         _cell.wallRight = false;
                         GameObject.DestroyImmediate(_cell.goWallRight);
-                        _cell.canConnect = temp;
+                        _cell.canConnect = setConnection;
                         _cell.inMaze = false;
                         cL.cell.inMaze = false;
 
@@ -404,10 +404,10 @@ public class MazeGeneration {
 
                         cL.cell.wallDown = false;
                         GameObject.DestroyImmediate(cL.cell.goWallDown);
-                        cL.cell.canConnect = temp;
+                        cL.cell.canConnect = setConnection;
                         _cell.wallUp = false;
                         GameObject.DestroyImmediate(_cell.goWallUp);
-                        _cell.canConnect = temp;
+                        _cell.canConnect = setConnection;
                         _cell.inMaze = false;
                         cL.cell.inMaze = false;
 
@@ -416,10 +416,10 @@ public class MazeGeneration {
 
                         cL.cell.wallUp = false;
                         GameObject.DestroyImmediate(cL.cell.goWallUp);
-                        cL.cell.canConnect = temp;
+                        cL.cell.canConnect = setConnection;
                         _cell.wallDown = false;
                         GameObject.DestroyImmediate(_cell.goWallDown);
-                        _cell.canConnect = temp;
+                        _cell.canConnect = setConnection;
                         _cell.inMaze = false;
                         cL.cell.inMaze = false;
 
@@ -484,6 +484,7 @@ public class MazeGeneration {
                         _cell.canConnect = temp;
                         _cell.inMaze = true;
                         cL.cell.inMaze = true;
+                        
 
                         break;
                     case direction.RIGHT:
@@ -708,7 +709,7 @@ public class MazeGeneration {
 
         foreach (mazeCell c in maze)
         {
-            if (!IDLIST.Contains(c.ID))
+            if (!IDLIST.Contains(c.ID)&& c.canConnect)
             {
                 IDLIST.Add(c.ID);
             }
@@ -799,7 +800,7 @@ public class MazeGeneration {
                     }
                 }
 
-                if (labeledInCell.cell.ID == currCell.ID)
+                if (labeledInCell.cell.ID == currCell.ID || !labeledInCell.cell.canConnect)
                 {
                     continue;
                 }
@@ -838,7 +839,14 @@ public class MazeGeneration {
 
         foreach (mazeCell c in maze)
         {
-            outCells.Add(c);
+            if (c.inMaze)
+            {
+                inCells.Add(c);
+            }
+            else
+            {
+                outCells.Add(c);
+            }
         }
 
 
@@ -853,7 +861,7 @@ public class MazeGeneration {
         //...and make its neighbours frontier cells
         foreach (cellLabel c in currCell.adjacentCells)
         {
-            if (!frontierCells.Contains(c.cell))
+            if (!frontierCells.Contains(c.cell)&& !c.cell.inMaze)
             {
                 frontierCells.Add(c.cell);
                 outCells.Remove(c.cell);
@@ -941,7 +949,7 @@ public class MazeGeneration {
             for (int i = 0; i < currCell.adjacentCells.Count; i++)
             {
                 labeledInCell = currCell.adjacentCells[i];
-                if (labeledInCell.cell.inMaze)
+                if (labeledInCell.cell.inMaze && labeledInCell.cell.canConnect)
                 {
                     i = currCell.adjacentCells.Count;
                 }

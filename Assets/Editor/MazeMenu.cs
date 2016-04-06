@@ -30,11 +30,11 @@ public class MazeMenu : EditorWindow
         floorMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat")
     };
     public MazeGeneration generator = new MazeGeneration();    
-    GUIContent biasTooltip;
-    GUIContent wallRemovalTT;
-    GUIContent doorwayTT;
-    GUIStyle headerStyle = new GUIStyle();
-    AnimBool showBiasFields = new AnimBool();
+    GUIContent biasTooltip, wallRemovalTT, doorwayTT, genWRoomsTT, generateTT;
+    GUIStyle enabledButton, disabledButton;
+    GUIStyle headerStyle;
+    AnimBool showBiasFields;
+
     
 
     [MenuItem("Custom Tools/Maze Generator")]
@@ -53,9 +53,15 @@ public class MazeMenu : EditorWindow
     {
         biasTooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards vertical");
         wallRemovalTT = new GUIContent("Remove Selected Walls", 
-            "Remove walls of a base layout that are selected in the scene window. \nCells either side of the wall can't be connected to the rest of the maze");
+            "Remove the walls of a base layout that are selected in the scene window. \nCells either side of the wall can't be connected to the rest of the maze");
         doorwayTT = new GUIContent("Designate Doorway",
-            "Remove walls of a base layout that are selected in the scene window. \nCells either side of the wall are able to be connected to the maze");
+            "Remove the walls of a base layout that are selected in the scene window. \nCells either side of the wall are able to be connected to the maze");
+        genWRoomsTT = new GUIContent("Generate With Rooms",
+            "Generate a maze that includes user defined rooms. \nRequires Base Layout.\nUses width and depth defined during base layout creation");
+        generateTT = new GUIContent("Generate New Maze","Creates a new maze, does not require a base layout to be created.");
+
+        enabledButton = new GUIStyle();
+        disabledButton = new GUIStyle();
 
         headerStyle = new GUIStyle();
         showBiasFields = new AnimBool();
@@ -74,6 +80,7 @@ public class MazeMenu : EditorWindow
         showBiasFields.target = param.useBias;
         showBiasFields.valueChanged.AddListener(Repaint);
         headerStyle.fontStyle = FontStyle.Bold;
+        
         
         scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
         {
@@ -105,15 +112,18 @@ public class MazeMenu : EditorWindow
                 }
             }
             EditorGUILayout.EndHorizontal();
-
-            if (GUILayout.Button(wallRemovalTT))
+            EditorGUILayout.BeginHorizontal();
             {
-                generator.removeSelectedWalls();
+                if (GUILayout.Button(wallRemovalTT))
+                {
+                    generator.removeSelectedWalls();
+                }
+                if (GUILayout.Button(doorwayTT))
+                {
+                    generator.createDoorway();
+                }
             }
-            if (GUILayout.Button(doorwayTT))
-            {
-                generator.createDoorway();
-            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
                         
@@ -132,12 +142,16 @@ public class MazeMenu : EditorWindow
             }
             EditorGUILayout.EndFadeGroup();
 
-            if (GUILayout.Button("Generate With Rooms"))
+            if (GUILayout.Button(genWRoomsTT))
             {
-                generator.GenerateWithRooms(param);
+                if (generator.fullMaze && !(param.generationMethod == (mazeType.KRUSKALS)|| param.generationMethod == mazeType.RANDOM))
+                {
+                    generator.GenerateWithRooms(param);
+                }
             }
 
-            if ( GUILayout.Button("Generate New"))
+
+            if ( GUILayout.Button(generateTT))
             {
                 generator.Generate(param);
             }

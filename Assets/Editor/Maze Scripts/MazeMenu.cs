@@ -3,18 +3,19 @@ using System.Collections;
 using UnityEditor;
 using UnityEditor.AnimatedValues;
 
+//Used for selecting between different methods. 
 public enum mazeType
 {
-    BACKTRACKER,PRIMS,KRUSKALS,RANDOM,
+    BACKTRACKER, PRIMS, KRUSKALS, RANDOM,
 }
 
+//The variables needed to define the generation of a maze
 public struct stats
 {
-    
     public int mazeWidth, mazeDepth;
     public float wallThickness, wallHeight;
     public mazeType generationMethod;
-    public Material wallMat,floorMat;
+    public Material wallMat, floorMat;
     public bool useBias;
     public bool dynamicBias;
     public float bias;
@@ -25,70 +26,81 @@ public struct stats
 public class MazeMenu : EditorWindow
 {
     private Vector2 scrollPos;
-    public stats param = new stats() {useBias = false,
-        wallMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat"),
-        floorMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat")
-    };
-    public MazeGeneration generator = new MazeGeneration();    
-    GUIContent biasTooltip, wallRemovalTT, doorwayTT, genWRoomsTT, generateTT;
-    GUIStyle enabledButton, disabledButton;
+    public stats param;
+    public MazeGeneration generator = new MazeGeneration();
+    GUIContent biasTooltip, wallRemovalTT, doorwayTT, genWRoomsTT, generateTT; 
     GUIStyle headerStyle;
     AnimBool showBiasFields;
 
-    
-
+    //Establish the window in the toolbar
     [MenuItem("Custom Tools/Maze Generator")]
     private static void OpenWindow()
     {
         EditorWindow.GetWindow<MazeMenu>(typeof(MazeMenu));
     }
 
-    [MenuItem("Tools/Maze Generator", true)]
+    [MenuItem("Custom Tools/Maze Generator", true)]
     private static bool showEditorValidator()
     {
         return true;
     }
 
+    //Create default curve for the dynamic bias
+    private AnimationCurve defineCurve()
+    {
+        AnimationCurve temp = new AnimationCurve();
+        temp.AddKey(-1, -1);
+        temp.AddKey(-0.55f, -0.95f);
+        temp.AddKey(-0.001f, -0.5f);
+        temp.AddKey(0.001f, 0.5f);
+        temp.AddKey(0.55f, 0.95f);
+        temp.AddKey(1, 1);
+        temp.SmoothTangents(2, 1);
+        temp.SmoothTangents(3, -1);
+
+        return temp;
+    }
+
+    //Works as a constructor
     void OnEnable()
     {
+        //Set tooltips
         biasTooltip = new GUIContent("Bias Value", "Positive values bias towards horizontal, negative towards vertical");
-        wallRemovalTT = new GUIContent("Remove Selected Walls", 
+        wallRemovalTT = new GUIContent("Remove Selected Walls",
             "Remove the walls of a base layout that are selected in the scene window. \nCells either side of the wall can't be connected to the rest of the maze");
         doorwayTT = new GUIContent("Designate Doorway",
             "Remove the walls of a base layout that are selected in the scene window. \nCells either side of the wall are able to be connected to the maze");
         genWRoomsTT = new GUIContent("Generate With Rooms",
             "Generate a maze that includes user defined rooms. \nRequires Base Layout.\nUses width and depth defined during base layout creation");
-        generateTT = new GUIContent("Generate New Maze","Creates a new maze, does not require a base layout to be created.");
-
-        enabledButton = new GUIStyle();
-        disabledButton = new GUIStyle();
+        generateTT = new GUIContent("Generate New Maze", "Creates a new maze, does not require a base layout to be created.");
 
         headerStyle = new GUIStyle();
         showBiasFields = new AnimBool();
-        generator = new MazeGeneration();        
+        generator = new MazeGeneration();
         param = new stats()
         {
-            dBCurve = new AnimationCurve(),
+            dBCurve = defineCurve(),
             useBias = false,
             wallMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat"),
             floorMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat")
         };
     }
 
+    //Create the layout of the window
     void OnGUI()
     {
         showBiasFields.target = param.useBias;
         showBiasFields.valueChanged.AddListener(Repaint);
         headerStyle.fontStyle = FontStyle.Bold;
-        
-        
+
+
         scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
         {
             EditorGUILayout.LabelField("Basic Layout Parameters", headerStyle);
 
-            param.mazeWidth= EditorGUILayout.IntSlider("Maze Depth", param.mazeWidth, 5, 50);
+            param.mazeWidth = EditorGUILayout.IntSlider("Maze Depth", param.mazeWidth, 5, 50);
 
-            param.mazeDepth= EditorGUILayout.IntSlider("Maze Width", param.mazeDepth, 5, 50);
+            param.mazeDepth = EditorGUILayout.IntSlider("Maze Width", param.mazeDepth, 5, 50);
 
             param.wallHeight = EditorGUILayout.Slider("Wall Height", param.wallHeight, 0.5f, 3);
 
@@ -126,12 +138,12 @@ public class MazeMenu : EditorWindow
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
-                        
+
             EditorGUILayout.LabelField("Maze Specific Parmaters", headerStyle);
 
             param.generationMethod = (mazeType)EditorGUILayout.EnumPopup("Generation Method", param.generationMethod);
-                       
-            param.useBias = EditorGUILayout.Toggle("Use Bias", param.useBias);  
+
+            param.useBias = EditorGUILayout.Toggle("Use Bias", param.useBias);
 
             if (EditorGUILayout.BeginFadeGroup(showBiasFields.faded))
             {
@@ -144,23 +156,17 @@ public class MazeMenu : EditorWindow
 
             if (GUILayout.Button(genWRoomsTT))
             {
-                if (generator.fullMaze && !(param.generationMethod == (mazeType.KRUSKALS)|| param.generationMethod == mazeType.RANDOM))
+                if (generator.fullMaze && !(param.generationMethod == (mazeType.KRUSKALS) || param.generationMethod == mazeType.RANDOM))
                 {
                     generator.GenerateWithRooms(param);
                 }
             }
 
-
-            if ( GUILayout.Button(generateTT))
+            if (GUILayout.Button(generateTT))
             {
                 generator.Generate(param);
             }
-
-            
-           
         }
-        EditorGUILayout.EndScrollView();        
+        EditorGUILayout.EndScrollView();
     }
-    
-        
 }

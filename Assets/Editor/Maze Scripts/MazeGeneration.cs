@@ -20,15 +20,14 @@ public struct wallData
 //The base cell. Needs a list of cell labels, which contain cells, so this must be a class.
 public class mazeCell
 {
-    public int index;
-    public int ID;    
-    public bool inMaze;
-    public bool wallUp, wallDown, wallLeft, wallRight;
-    public intVector2 gridPos;
-    public List<cellLabel> adjacentCells = new List<cellLabel>();
-    public List<cellLabel> inNeighbours = new List<cellLabel>();
-    public GameObject goWallUp, goWallDown, goWallLeft, goWallRight;
-    public bool canConnect;
+    public int index;       // Position in the array
+    public int ID;          // ID for use with kruskals algortihm
+    public bool inMaze;     // If the cell is in the maze
+    public bool wallUp, wallDown, wallLeft, wallRight;          // If there is a wall in each direction
+    public intVector2 gridPos;                                  // 2-Dimensional co-ordinate od the cell
+    public List<cellLabel> adjacentCells = new List<cellLabel>();       // List of cells surrounding the cell labeled with direction of the cell.
+    public GameObject goWallUp, goWallDown, goWallLeft, goWallRight;    // The gameObjects in the scene representing the walls around the cell.
+    public bool canConnect;     // If the cell is designated as in a room and unable to be connected to. 
 
 }
 
@@ -47,10 +46,11 @@ public struct intVector2
 }
 
 [ExecuteInEditMode]
-public class MazeGeneration {
+public class MazeGeneration
+{
 
     GameObject wallWorldHolder;
-    GameObject floorWorldHolder; 
+    GameObject floorWorldHolder;
     public GameObject fullMaze;
 
     float biasToUse;
@@ -62,11 +62,12 @@ public class MazeGeneration {
     //Construct Basic Layout
     public void constructBase(stats _params)
     {
-        _stats = _params;        
+        _stats = _params;
         createCells();
         drawMaze();
     }
 
+    //Used when a base layout has been created defining the rooms of the maze.
     public void GenerateWithRooms(stats _params)
     {
         int tempD = _stats.mazeDepth, tempW = _stats.mazeWidth;
@@ -86,13 +87,24 @@ public class MazeGeneration {
                 }
             case mazeType.RANDOM:
                 {
-                    if (Random.Range(0, 3) % 2 == 0)
+                    switch (Random.Range(0, 3))
                     {
-                        generatePrims();
-                    }
-                    else
-                    {
-                        generateKruskals();
+                        case 0:
+                            {
+                                generatePrims();
+                                break;
+                            }
+                        case 1:
+                            {
+                                generateKruskals();
+                                break;
+                            }
+                        case 2:
+                            {
+                                generateBackTracker();
+                                break;
+                            }
+
                     }
                     break;
                 }
@@ -111,7 +123,6 @@ public class MazeGeneration {
     //Main function
     public void Generate(stats _params)
     {
-        Debug.Log("Generating...");
         _stats = _params;
         createCells();
 
@@ -130,14 +141,25 @@ public class MazeGeneration {
                 }
             case mazeType.RANDOM:
                 {
-                    if (Random.Range(0,3) %2 ==0 )
+                    switch (Random.Range(0,3))
                     {
-                        generatePrims();
-                    }
-                    else
-                    {
-                        generateKruskals();
-                    }
+                        case 0:
+                            {
+                                generatePrims();
+                                break;
+                            }
+                        case 1:
+                            {
+                                generateKruskals();
+                                break;
+                            }
+                        case 2:
+                            {
+                                generateBackTracker();
+                                break;
+                            }
+
+                    }                    
                     break;
                 }
             case mazeType.BACKTRACKER:
@@ -145,17 +167,13 @@ public class MazeGeneration {
                     generateBackTracker();
                     break;
                 }
-
         }
-
         drawMaze();
-
     }
 
-    //Initialise a maze of cells
+    //Initialise a full maze of cells
     void createCells()
     {
-
         //Clear out the last maze
         maze.Clear();
         int cellCount = 0;
@@ -163,15 +181,25 @@ public class MazeGeneration {
         {
             for (int j = 1; j <= _stats.mazeDepth; j++)
             {
-                maze.Add(new mazeCell() { index = i, ID = cellCount, gridPos = { x = j, y = i }, inMaze = false,
-                    wallUp = true, wallDown = true, wallLeft = true, wallRight = true, canConnect = true});
+                maze.Add(new mazeCell()
+                {
+                    index = i,
+                    ID = cellCount,
+                    gridPos = { x = j, y = i },
+                    inMaze = false,
+                    wallUp = true,
+                    wallDown = true,
+                    wallLeft = true,
+                    wallRight = true,
+                    canConnect = true
+                });
                 cellCount++;
             }
         }
         foreach (mazeCell c in maze)
         {
             getNeighbours(c);
-        }  
+        }
     }
 
     //Define the cells neighbours
@@ -181,7 +209,7 @@ public class MazeGeneration {
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x - 1, _cell.gridPos.y), dir = direction.LEFT });
         }
-        if (_cell.gridPos.x < _stats.mazeDepth )
+        if (_cell.gridPos.x < _stats.mazeDepth)
         {
             _cell.adjacentCells.Add(new cellLabel() { cell = getCellAt(_cell.gridPos.x + 1, _cell.gridPos.y), dir = direction.RIGHT });
         }
@@ -198,9 +226,6 @@ public class MazeGeneration {
     //Return cell in maz list from grid position co-ords
     mazeCell getCellAt(int _x, int _y)
     {
-
-        //int whatis = ((_y - 1) * _stats.mazeDepth) + _x - 1; //For debugging.
-        //Debug.Log(whatis);
         return (maze[((_y - 1) * _stats.mazeDepth) + _x - 1]); //Convert given grid position to list position.
     }
 
@@ -211,9 +236,9 @@ public class MazeGeneration {
         {
             GameObject.DestroyImmediate(fullMaze.gameObject);
         }
-        
     }
 
+    //Create the wall object in the scene
     private void createWall(wallData wd, mazeCell _cell, direction _cellDir)
     {
         if (!wallDataHolder.Contains(wd))
@@ -234,14 +259,14 @@ public class MazeGeneration {
             {
                 wallObject.transform.localScale = new Vector3(1 + _stats.wallThickness, _stats.wallHeight, _stats.wallThickness);
             }
-            wallObject.transform.parent = wallWorldHolder.transform;       
+            wallObject.transform.parent = wallWorldHolder.transform;
             wallWorldHolder.name = "Walls";
-            
-            switch(_cellDir)
+
+            switch (_cellDir)
             {
                 case direction.LEFT:
                     _cell.goWallRight = wallObject;
-                    if (returnCellInDir(_cell, direction.RIGHT)!= _cell)
+                    if (returnCellInDir(_cell, direction.RIGHT) != _cell)
                     {
                         returnCellInDir(_cell, direction.RIGHT).goWallLeft = wallObject;
                     }
@@ -249,7 +274,7 @@ public class MazeGeneration {
                     break;
                 case direction.RIGHT:
                     _cell.goWallLeft = wallObject;
-                    
+
                     if (returnCellInDir(_cell, direction.LEFT) != _cell)
                     {
                         returnCellInDir(_cell, direction.LEFT).goWallRight = wallObject;
@@ -258,7 +283,7 @@ public class MazeGeneration {
                     break;
                 case direction.UP:
                     _cell.goWallDown = wallObject;
-                    
+
                     if (returnCellInDir(_cell, direction.DOWN) != _cell)
                     {
                         returnCellInDir(_cell, direction.DOWN).goWallUp = wallObject;
@@ -267,7 +292,7 @@ public class MazeGeneration {
                     break;
                 case direction.DOWN:
                     _cell.goWallUp = wallObject;
-                    
+
                     if (returnCellInDir(_cell, direction.UP) != _cell)
                     {
                         returnCellInDir(_cell, direction.UP).goWallDown = wallObject;
@@ -275,54 +300,56 @@ public class MazeGeneration {
 
                     break;
 
-            }            
-        }        
+            }
+        }
     }
 
     //Create objects to make a visual representation of the maze.
     public void drawMaze()
     {
+        
         wallDataHolder.Clear();
         wallWorldHolder = new GameObject();
-              
+
         fullMaze = new GameObject();
-        wallData wd;    
+        wallData wd;
+
 
         foreach (mazeCell c in maze)
         {
-            
+            //Check to make sure there isn't a gamobject already created.
             if (c.wallLeft && !c.goWallLeft)
             {
                 wd = new wallData() { position = new Vector2(c.gridPos.x - 0.5f, c.gridPos.y), isHorizontal = true };
-                createWall(wd, c, direction.RIGHT);       
+                createWall(wd, c, direction.RIGHT); 
 
             }
             if (c.wallRight && !c.goWallRight)
             {
-                wd = new wallData() {position = new Vector2(c.gridPos.x + 0.5f, c.gridPos.y), isHorizontal = true };
-                createWall(wd, c,direction.LEFT);
-               
+                wd = new wallData() { position = new Vector2(c.gridPos.x + 0.5f, c.gridPos.y), isHorizontal = true };
+                createWall(wd, c, direction.LEFT);
+
             }
             if (c.wallUp && !c.goWallUp)
             {
                 wd = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y + 0.5f), isHorizontal = false };
-                createWall(wd, c,direction.DOWN);
-                
+                createWall(wd, c, direction.DOWN);
+
             }
             if (c.wallDown && !c.goWallDown)
             {
                 wd = new wallData() { position = new Vector2(c.gridPos.x, c.gridPos.y - 0.5f), isHorizontal = false };
-                createWall(wd, c,direction.UP);
-                
-            }         
+                createWall(wd, c, direction.UP);
+
+            }
         }
 
 
-        floorWorldHolder = GameObject.CreatePrimitive(PrimitiveType.Quad);        
+        floorWorldHolder = GameObject.CreatePrimitive(PrimitiveType.Quad);
         floorWorldHolder.GetComponent<Renderer>().material = _stats.floorMat;
-        floorWorldHolder.transform.position = new Vector3((_stats.mazeDepth/ 2.0f) +0.5f, 0, (_stats.mazeWidth / 2.0f)+0.5f);
+        floorWorldHolder.transform.position = new Vector3((_stats.mazeDepth / 2.0f) + 0.5f, 0, (_stats.mazeWidth / 2.0f) + 0.5f);
         floorWorldHolder.transform.localScale = new Vector3(_stats.mazeDepth, _stats.mazeWidth, 1);
-        floorWorldHolder.transform.Rotate(new Vector3 (90,0,0));
+        floorWorldHolder.transform.Rotate(new Vector3(90, 0, 0));
         floorWorldHolder.name = "Floor";
 
         wallWorldHolder.transform.parent = fullMaze.transform;
@@ -332,6 +359,7 @@ public class MazeGeneration {
 
     }
 
+    //Find cells connected to wall selection for doorway
     public void createDoorway()
     {
         List<GameObject> selectedWalls = new List<GameObject>();
@@ -366,6 +394,7 @@ public class MazeGeneration {
         }
     }
 
+    //Set variables and remove wall objects for the cells connected to the door
     private void designateDoorways(mazeCell _cell, direction _dir)
     {
         bool setConnection = true;
@@ -430,26 +459,26 @@ public class MazeGeneration {
         }
     }
 
-    // W I P
+    // Find cells connected to selected walls to be removed.
     public void removeSelectedWalls()
     {
         List<GameObject> selectedWalls = new List<GameObject>();
-        foreach(GameObject go in  UnityEditor.Selection.gameObjects)
+        foreach (GameObject go in UnityEditor.Selection.gameObjects)
         {
-            if(go.name.Contains("Wall"))
+            if (go.name.Contains("Wall"))
             {
                 selectedWalls.Add(go);
             }
-        }        
-        foreach( mazeCell cell in maze)
+        }
+        foreach (mazeCell cell in maze)
         {
-            for (int i = 0; i < selectedWalls.Count; i ++)
+            for (int i = 0; i < selectedWalls.Count; i++)
             {
                 if (selectedWalls[i] == cell.goWallLeft)
                 {
                     neighbourRemoveObject(cell, direction.LEFT);
                 }
-                else if(selectedWalls[i] == cell.goWallRight)
+                else if (selectedWalls[i] == cell.goWallRight)
                 {
                     neighbourRemoveObject(cell, direction.RIGHT);
                 }
@@ -465,6 +494,7 @@ public class MazeGeneration {
         }
     }
 
+    //Set variables in cells and remove the selected wall objects
     public void neighbourRemoveObject(mazeCell _cell, direction _dir)
     {
         bool temp = false;
@@ -476,7 +506,7 @@ public class MazeGeneration {
                 {
                     case direction.LEFT:
 
-                        cL.cell.wallRight = false;                        
+                        cL.cell.wallRight = false;
                         GameObject.DestroyImmediate(cL.cell.goWallRight);
                         cL.cell.canConnect = temp;
                         _cell.wallLeft = false;
@@ -484,7 +514,7 @@ public class MazeGeneration {
                         _cell.canConnect = temp;
                         _cell.inMaze = true;
                         cL.cell.inMaze = true;
-                        
+
 
                         break;
                     case direction.RIGHT:
@@ -497,7 +527,7 @@ public class MazeGeneration {
                         _cell.canConnect = temp;
                         _cell.inMaze = true;
                         cL.cell.inMaze = true;
-                        
+
 
                         break;
                     case direction.UP:
@@ -531,9 +561,9 @@ public class MazeGeneration {
     }
 
     //Function that removes the walls between the cell passed in, and the neighbour in the direction passed in.
-    public void neighbourRemove(mazeCell _cell ,direction _dir)
+    public void neighbourRemove(mazeCell _cell, direction _dir)
     {
-        foreach(cellLabel cL in _cell.adjacentCells)
+        foreach (cellLabel cL in _cell.adjacentCells)
         {
             if (cL.dir == _dir)
             {
@@ -553,7 +583,7 @@ public class MazeGeneration {
                     case direction.UP:
                         cL.cell.wallDown = false;
                         _cell.wallUp = false;
-                        
+
                         break;
                     case direction.DOWN:
                         cL.cell.wallUp = false;
@@ -565,22 +595,17 @@ public class MazeGeneration {
         }
     }
 
-    //Debug function for testing maze drawing worked correctly.
-    public void everyOther()
+    //Debug function for testing maze drawing works correctly. NOT CALLED.
+    private void everyOther()
     {
         foreach (mazeCell c in maze)
         {
-            if(c.gridPos.x % 2 != 0)
+            if (c.gridPos.x % 2 != 0)
             {
                 neighbourRemove(c, direction.LEFT);
-                neighbourRemove(c, direction.RIGHT);            
+                neighbourRemove(c, direction.RIGHT);
 
-            }
-            else
-            {
-               // c.wallUp = false;
-               // c.wallDown = false;
-            }
+            }          
         }
     }
 
@@ -589,7 +614,7 @@ public class MazeGeneration {
     {
         foreach (cellLabel _cl in _cell.adjacentCells)
         {
-            if(_cl.dir == _dir)
+            if (_cl.dir == _dir)
             {
                 return _cl.cell;
             }
@@ -597,16 +622,15 @@ public class MazeGeneration {
         return _cell;
     }
 
-    // DYNAMIC BIAS  // NEEDS MORE WORK!!
+    // Calculate a bias value based upon adjoining cells.
     float calculateDynamicBias(mazeCell _cell)
     {
-        
+
         float _bias = 0;
         mazeCell temp;
         int hCount = 0;
         int vCount = 0;
         float hDecimal, vDecimal;
-        
 
         #region Get Count
         foreach (cellLabel cL in _cell.adjacentCells)
@@ -624,9 +648,9 @@ public class MazeGeneration {
                             {
                                 hCount++;
                             }
-                        }                                        
+                        }
                     }
-                   
+
 
                     break;
                 case direction.RIGHT:
@@ -677,26 +701,27 @@ public class MazeGeneration {
 
         }
         #endregion
-
+        
+        //Turn count variables into a value between -1 and 1.
         hDecimal = (float)hCount / (float)_stats.dBPathLength;
         vDecimal = (float)vCount / (float)_stats.dBPathLength;
-        _bias = (hDecimal - vDecimal)/2.0f;
+        _bias = (hDecimal - vDecimal) / 2.0f;
+        //Map onto the curve
         _bias = evaluateCurve(_bias);
 
-        //Debug.Log("hCount = " + hCount + ", hdecimal = " + hDecimal + "\n vdecimal = " + vDecimal);
-        Debug.Log(_bias);
         return _bias;
     }
 
-    float evaluateCurve( float _value)
+    //Evaluates the bias curve with passed in value
+    float evaluateCurve(float _value)
     {
-        return (_stats.dBCurve.Evaluate(_value)); 
+        return (_stats.dBCurve.Evaluate(_value));
     }
 
     //Kruskals algorithm 
     void generateKruskals()
     {
-        List<int> IDLIST = new List<int>(); 
+        List<int> IDLIST = new List<int>();
 
         //shuffle the maze
         for (int i = 0; i < maze.Count; i++)
@@ -709,7 +734,7 @@ public class MazeGeneration {
 
         foreach (mazeCell c in maze)
         {
-            if (!IDLIST.Contains(c.ID)&& c.canConnect)
+            if (!IDLIST.Contains(c.ID) && c.canConnect)
             {
                 IDLIST.Add(c.ID);
             }
@@ -808,13 +833,13 @@ public class MazeGeneration {
                 currCell.inMaze = true;
                 neighbourRemove(currCell, labeledInCell.dir);
                 int tempInt = labeledInCell.cell.ID;
-                foreach(int i in IDLIST)
+                foreach (int i in IDLIST)
                 {
-                    if(i == tempInt)
+                    if (i == tempInt)
                     {
-                        foreach(mazeCell c in maze)
+                        foreach (mazeCell c in maze)
                         {
-                            if(c.ID == tempInt)
+                            if (c.ID == tempInt)
                             {
                                 c.ID = currCell.ID;
                             }
@@ -824,7 +849,7 @@ public class MazeGeneration {
                     }
                 }
             }
-        }        
+        }
     }
 
     //Prims Algorithm
@@ -849,7 +874,6 @@ public class MazeGeneration {
             }
         }
 
-
         //Pick a starting cell...
         currCell = outCells[Random.Range(0, outCells.Count)];
 
@@ -861,15 +885,14 @@ public class MazeGeneration {
         //...and make its neighbours frontier cells
         foreach (cellLabel c in currCell.adjacentCells)
         {
-            if (!frontierCells.Contains(c.cell)&& !c.cell.inMaze)
+            if (!frontierCells.Contains(c.cell) && !c.cell.inMaze)
             {
                 frontierCells.Add(c.cell);
                 outCells.Remove(c.cell);
 
             }
         }
-
-
+        
         while (frontierCells.Count > 0)
         {
             currCell = frontierCells[Random.Range(0, frontierCells.Count)];
@@ -931,7 +954,7 @@ public class MazeGeneration {
                     }
                     else
                     {
-                        if (Random.Range(-1.0f, 1.0f) >biasToUse)
+                        if (Random.Range(-1.0f, 1.0f) > biasToUse)
                         {
                             index = vtShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];
@@ -960,7 +983,7 @@ public class MazeGeneration {
             inCells.Add(currCell);
             frontierCells.Remove(currCell);
 
-            neighbourRemove(currCell, labeledInCell.dir);            
+            neighbourRemove(currCell, labeledInCell.dir);
 
             foreach (cellLabel c in currCell.adjacentCells)
             {
@@ -970,14 +993,8 @@ public class MazeGeneration {
                     outCells.Remove(c.cell);
                 }
             }
-
-
-
         }
-
         maze = inCells;
-        Debug.Log("MAZE MADE");
-
     }
 
     //Recursive Backtracker Algorithm
@@ -1009,7 +1026,7 @@ public class MazeGeneration {
             for (int i = 0; i < currCell.adjacentCells.Count; i++)
             {
                 cellLabel tempCell = currCell.adjacentCells[i];
-                int randomIndex;                
+                int randomIndex;
                 randomIndex = Random.Range(i, currCell.adjacentCells.Count);
                 currCell.adjacentCells[i] = currCell.adjacentCells[randomIndex];
                 currCell.adjacentCells[randomIndex] = tempCell;
@@ -1031,7 +1048,7 @@ public class MazeGeneration {
                     {
                         horizontals.Add(cL);
                     }
-                    if(cL.dir ==direction.UP || cL.dir == direction.DOWN)
+                    if (cL.dir == direction.UP || cL.dir == direction.DOWN)
                     {
 
                     }
@@ -1039,15 +1056,15 @@ public class MazeGeneration {
                 int hzShuffCount = 0;
                 int vtShuffCount = 0;
                 biasToUse = _stats.bias;
-                 
-                if(_stats.dynamicBias)
+
+                if (_stats.dynamicBias)
                 {
                     biasToUse = calculateDynamicBias(currCell);
                 }
 
                 for (int i = 0; i < currCell.adjacentCells.Count; i++)
                 {
-                    
+
                     cellLabel tempCell = currCell.adjacentCells[i];
                     int index;
                     if (horizontals.Contains(tempCell))
@@ -1057,8 +1074,8 @@ public class MazeGeneration {
                             index = hzShuffCount;
                             currCell.adjacentCells[i] = currCell.adjacentCells[index];
                             currCell.adjacentCells[index] = tempCell;
-                        }                        
-                        
+                        }
+
                         hzShuffCount++;
                     }
                     else
@@ -1072,14 +1089,14 @@ public class MazeGeneration {
 
                         vtShuffCount++;
                     }
-                    
+
                 }
             }
             #endregion
 
 
             //This line is just to stop VS having a fit about something being possible unassigned.
-            labeledInCell = currCell.adjacentCells[0];    
+            labeledInCell = currCell.adjacentCells[0];
 
             //Cycle through shuffled list for first neighbour already in maze
             for (int i = 0; i < currCell.adjacentCells.Count; i++)
@@ -1090,16 +1107,15 @@ public class MazeGeneration {
                     i = currCell.adjacentCells.Count;
                 }
             }
-            
+
             //If the adjacent cell assigned isn't in the maze yet, add it and make it the current cell
-            if(!labeledInCell.cell.inMaze) 
+            if (!labeledInCell.cell.inMaze)
             {
                 neighbourRemove(currCell, labeledInCell.dir);
 
                 currCell = labeledInCell.cell;
                 currCell.inMaze = true;
                 path.Add(currCell);
-
 
             }
             else
